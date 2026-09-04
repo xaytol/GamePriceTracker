@@ -1,0 +1,28 @@
+# Переменные окружения (ПАРОЛИ!)
+.env
+
+# Виртуальное окружение
+venv/
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE
+.vscode/
+.idea/
+
+# Логи
+logs/
+*.log
+
+# Poetry
+poetry.lock
+
+# OS
+.DS_Store
+Thumbs.db

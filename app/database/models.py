@@ -1,6 +1,6 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import datetime
-from sqlalchemy import String, DateTime, ForeignKey, Numeric, Boolean, func
+from sqlalchemy import String, DateTime, ForeignKey, Numeric, Boolean, Integer, func
 from typing import Optional, List
 from decimal import Decimal
 
@@ -9,10 +9,16 @@ class Base(DeclarativeBase):
     pass
 
 
-class UserModel(Base):
+class BaseModel(Base):
+    """Базовый класс для всех моделей с id"""
+    __abstract__ = True
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+
+
+class UserModel(BaseModel):
     __tablename__ = "users"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     email: Mapped[str] = mapped_column(String, unique=True)
     hashed_password: Mapped[str] = mapped_column(String)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())
@@ -20,10 +26,9 @@ class UserModel(Base):
     wishlists: Mapped[List["WishlistModel"]] = relationship(back_populates="user")
 
 
-class GameModel(Base):
+class GameModel(BaseModel):
     __tablename__ = "games"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     title: Mapped[str] = mapped_column(String)
     external_id: Mapped[str] = mapped_column(String, index=True, unique=True)
     current_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
@@ -33,10 +38,9 @@ class GameModel(Base):
     price_history: Mapped[List["PriceHistoryModel"]] = relationship(back_populates="game")
 
 
-class WishlistModel(Base):
+class WishlistModel(BaseModel):
     __tablename__ = "wishlists"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id"))
     target_price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
@@ -47,10 +51,9 @@ class WishlistModel(Base):
     game: Mapped["GameModel"] = relationship(back_populates="wishlists")
 
 
-class PriceHistoryModel(Base):
+class PriceHistoryModel(BaseModel):
     __tablename__ = "price_history"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
     game_id: Mapped[int] = mapped_column(ForeignKey("games.id"))
     price: Mapped[Decimal] = mapped_column(Numeric(10, 2))
     recorded_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=func.now())

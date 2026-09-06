@@ -1,6 +1,6 @@
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 from datetime import datetime
-from sqlalchemy import String, DateTime, ForeignKey, Numeric, Boolean, Integer, func
+from sqlalchemy import Index, String, DateTime, ForeignKey, Numeric, Boolean, Integer, func
 from typing import Optional, List
 from decimal import Decimal
 
@@ -49,6 +49,10 @@ class WishlistModel(BaseModel):
 
     user: Mapped["UserModel"] = relationship(back_populates="wishlists")
     game: Mapped["GameModel"] = relationship(back_populates="wishlists")
+
+    __table_args__ = (
+        Index('ix_wishlist_user_game', 'user_id', 'game_id', unique=True),
+    )
 
 
 class PriceHistoryModel(BaseModel):

@@ -1,5 +1,5 @@
-from config import settings
-from exceptions import (
+from app.core.config import settings
+from app.core.exceptions import (
     UserAlreadyExistsError, 
     InvalidCredentialsError, 
     GameAlreadyExistsError,

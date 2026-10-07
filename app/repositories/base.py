@@ -1,6 +1,8 @@
+from typing import Generic, TypeVar
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Generic, TypeVar
+
 from app.database.models import BaseModel
 
 T = TypeVar("T", bound=BaseModel)
@@ -10,7 +12,7 @@ class BaseRepository(Generic[T]):
     def __init__(self, session: AsyncSession, model: type[T]):
         self.session = session
         self.model = model
-    
+
     async def get_by_id(self, id: int) -> T | None:
         result = await self.session.execute(
             select(self.model).where(self.model.id == id)

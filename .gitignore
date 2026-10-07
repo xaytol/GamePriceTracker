@@ -12,6 +12,13 @@ __pycache__/
 *.so
 .Python
 
+# Кэш линтеров и тестов
+.ruff_cache/
+.pytest_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
 # IDE
 .vscode/
 .idea/
@@ -19,9 +26,6 @@ __pycache__/
 # Логи
 logs/
 *.log
-
-# Poetry
-poetry.lock
 
 # OS
 .DS_Store

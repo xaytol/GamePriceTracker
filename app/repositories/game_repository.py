@@ -1,5 +1,6 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database.models import GameModel
 from app.repositories.base import BaseRepository
 
@@ -18,8 +19,6 @@ class GameRepository(BaseRepository[GameModel]):
     async def get_for_update(self, game_id: int) -> GameModel | None:
         """Блокирует строку для обновления"""
         result = await self.session.execute(
-            select(self.model)
-            .where(self.model.id == game_id)
-            .with_for_update()
+            select(self.model).where(self.model.id == game_id).with_for_update()
         )
         return result.scalar_one_or_none()

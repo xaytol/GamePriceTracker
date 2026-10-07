@@ -1,18 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.schemas.game import GameCreate, GameUpdate, GameResponse
+from app.core.dependencies import Pagination, get_game_service
+from app.core.exceptions import GameAlreadyExistsError, GameNotFoundError
+from app.schemas.game import GameCreate, GameResponse, GameUpdate
 from app.schemas.price_history import PriceHistoryResponse
 from app.services.game_service import GameService
-from app.core.dependencies import get_game_service, Pagination
-from app.core.exceptions import GameNotFoundError, GameAlreadyExistsError
 
 router = APIRouter(prefix="/games", tags=["Games"])
 
 
 @router.post("/", response_model=GameResponse, status_code=status.HTTP_201_CREATED)
 async def create_game(
-    game_data: GameCreate,
-    service: GameService = Depends(get_game_service)
+    game_data: GameCreate, service: GameService = Depends(get_game_service)
 ):
     """Создание новой игры"""
     try:
@@ -24,8 +23,7 @@ async def create_game(
 
 @router.get("/", response_model=list[GameResponse])
 async def get_games(
-    pagination: Pagination = Depends(),
-    service: GameService = Depends(get_game_service)
+    pagination: Pagination = Depends(), service: GameService = Depends(get_game_service)
 ):
     """Получение списка игр с пагинацией"""
     games = await service.get_games(pagination.limit, pagination.offset)
@@ -33,10 +31,7 @@ async def get_games(
 
 
 @router.get("/{game_id}", response_model=GameResponse)
-async def get_game(
-    game_id: int,
-    service: GameService = Depends(get_game_service)
-):
+async def get_game(game_id: int, service: GameService = Depends(get_game_service)):
     """Получение игры по ID"""
     try:
         game = await service.get_game(game_id)
@@ -49,7 +44,7 @@ async def get_game(
 async def update_game(
     game_id: int,
     game_data: GameUpdate,
-    service: GameService = Depends(get_game_service)
+    service: GameService = Depends(get_game_service),
 ):
     """Обновление игры"""
     try:
@@ -60,10 +55,7 @@ async def update_game(
 
 
 @router.delete("/{game_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_game(
-    game_id: int,
-    service: GameService = Depends(get_game_service)
-):
+async def delete_game(game_id: int, service: GameService = Depends(get_game_service)):
     """Удаление игры"""
     try:
         await service.delete_game(game_id)
@@ -73,8 +65,7 @@ async def delete_game(
 
 @router.get("/{game_id}/price-history", response_model=list[PriceHistoryResponse])
 async def get_price_history(
-    game_id: int,
-    service: GameService = Depends(get_game_service)
+    game_id: int, service: GameService = Depends(get_game_service)
 ):
     """Получение истории цен для игры"""
     try:

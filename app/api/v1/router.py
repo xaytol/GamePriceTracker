@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.api.v1.endpoints import users, games, wishlists
+from app.api.v1.endpoints import games, users, wishlists
 
 router = APIRouter(prefix="/api/v1")
 

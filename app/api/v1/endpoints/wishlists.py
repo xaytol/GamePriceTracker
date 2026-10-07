@@ -1,14 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 
-from app.schemas.wishlist import WishlistCreate, WishlistUpdate, WishlistResponse
-from app.services.wishlist_service import WishlistService
 from app.core.dependencies import get_wishlist_service
 from app.core.exceptions import (
+    AccessDeniedError,
+    GameNotFoundError,
     WishlistAlreadyExistsError,
     WishlistNotFoundError,
-    AccessDeniedError,
-    GameNotFoundError
 )
+from app.schemas.wishlist import WishlistCreate, WishlistResponse, WishlistUpdate
+from app.services.wishlist_service import WishlistService
 
 router = APIRouter(prefix="/wishlists", tags=["Wishlists"])
 
@@ -17,7 +17,7 @@ router = APIRouter(prefix="/wishlists", tags=["Wishlists"])
 async def add_to_wishlist(
     data: WishlistCreate,
     user_id: int,  # пока берем из query, потом будет из JWT
-    service: WishlistService = Depends(get_wishlist_service)
+    service: WishlistService = Depends(get_wishlist_service),
 ):
     """Добавление игры в вишлист"""
     try:
@@ -31,8 +31,7 @@ async def add_to_wishlist(
 
 @router.get("/user/{user_id}", response_model=list[WishlistResponse])
 async def get_user_wishlists(
-    user_id: int,
-    service: WishlistService = Depends(get_wishlist_service)
+    user_id: int, service: WishlistService = Depends(get_wishlist_service)
 ):
     """Получение всех вишлистов пользователя"""
     wishlists = await service.get_user_wishlists(user_id)
@@ -44,7 +43,7 @@ async def update_wishlist(
     wishlist_id: int,
     user_id: int,  # пока из query, потом из JWT
     data: WishlistUpdate,
-    service: WishlistService = Depends(get_wishlist_service)
+    service: WishlistService = Depends(get_wishlist_service),
 ):
     """Обновление целевой цены в вишлисте"""
     try:
@@ -60,7 +59,7 @@ async def update_wishlist(
 async def remove_from_wishlist(
     wishlist_id: int,
     user_id: int,  # пока из query, потом из JWT
-    service: WishlistService = Depends(get_wishlist_service)
+    service: WishlistService = Depends(get_wishlist_service),
 ):
     """Удаление игры из вишлиста"""
     try:

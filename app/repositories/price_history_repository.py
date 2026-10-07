@@ -1,8 +1,11 @@
-from sqlalchemy.ext.asyncio import AsyncSession
+from decimal import Decimal
+
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.database.models import PriceHistoryModel
 from app.repositories.base import BaseRepository
-from decimal import Decimal
+
 
 class PriceHistoryRepository(BaseRepository[PriceHistoryModel]):
     def __init__(self, session: AsyncSession):

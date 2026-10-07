@@ -1,11 +1,12 @@
-from sqlalchemy.ext.asyncio import AsyncSession
 from decimal import Decimal
 
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.core.exceptions import GameAlreadyExistsError, GameNotFoundError
 from app.database.models import GameModel, PriceHistoryModel
 from app.repositories.game_repository import GameRepository
 from app.repositories.price_history_repository import PriceHistoryRepository
 from app.schemas.game import GameCreate, GameUpdate
-from app.core.exceptions import GameNotFoundError, GameAlreadyExistsError
 
 
 class GameService:
@@ -18,10 +19,10 @@ class GameService:
         existing = await self.game_repo.get_by_external_id(game_data.external_id)
         if existing:
             raise GameAlreadyExistsError("Игра с таким external_id уже существует")
-        
+
         # маппинг Pydantic -> ORM
         game_model = GameModel(**game_data.model_dump())
-        
+
         return await self.game_repo.create(game_model)
 
     async def get_game(self, game_id: int) -> GameModel:
@@ -40,12 +41,12 @@ class GameService:
         game = await self.game_repo.get_by_id(game_id)
         if not game:
             raise GameNotFoundError(f"Игра с id {game_id} не найдена")
-        
+
         update_data = game_data.model_dump(exclude_unset=True)
-        
+
         for field, value in update_data.items():
             setattr(game, field, value)
-            
+
         return await self.game_repo.update(game)
 
     async def delete_game(self, game_id: int) -> None:
@@ -56,15 +57,15 @@ class GameService:
     async def get_price_history(self, game_id: int) -> list[PriceHistoryModel]:
         """Получение истории цен для игры (связка двух репозиториев)"""
         # сначала проверяем, что игра вообще существует
-        await self.get_game(game_id) 
-        
+        await self.get_game(game_id)
+
         # если ок, идем во второй репозиторий
         return await self.price_history_repo.get_by_game_id(game_id)
-    
+
     async def update_game_price(self, game_id: int, new_price: Decimal) -> GameModel:
         """Обновление цены игры и запись в историю (для Celery-воркера)"""
         game = await self.get_game(game_id)
-        
+
         # оптимизация: если цена не изменилась, не делаем лишних запросов в бд
         if game.current_price == new_price:
             return game

@@ -1,4 +1,5 @@
 import sys
+
 from loguru import logger
 
 logger.remove()
@@ -13,10 +14,10 @@ logger.add(
 logger.add(
     "logs/app_{time:YYYY-MM-DD}.log",
     rotation="10 MB",
-    retention="7 days",    # Автоматически удаляет логи старше 7 дней
-    level="DEBUG",         # В файл пишем более подробные логи (включая DEBUG)
+    retention="7 days",  # Автоматически удаляет логи старше 7 дней
+    level="DEBUG",  # В файл пишем более подробные логи (включая DEBUG)
     encoding="utf-8",
-    enqueue=True,          # ВАЖНО: делает запись в файл потоко- и процесс-безопасной (для Celery)
+    enqueue=True,  # ВАЖНО: делает запись в файл потоко- и процесс-безопасной (для Celery)
 )
 
 __all__ = ["logger"]

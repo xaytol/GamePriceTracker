@@ -11,6 +11,7 @@ from app.schemas.game import GameCreate, GameUpdate
 
 class GameService:
     def __init__(self, session: AsyncSession):
+        self.session = session
         self.game_repo = GameRepository(session)
         self.price_history_repo = PriceHistoryRepository(session)
 
@@ -20,10 +21,13 @@ class GameService:
         if existing:
             raise GameAlreadyExistsError("Игра с таким external_id уже существует")
 
-        # маппинг Pydantic -> ORM
         game_model = GameModel(**game_data.model_dump())
+        created_game = await self.game_repo.create(game_model)
 
-        return await self.game_repo.create(game_model)
+        await self.session.commit()
+        await self.session.refresh(created_game)
+
+        return created_game
 
     async def get_game(self, game_id: int) -> GameModel:
         """Получение игры по ID"""
@@ -43,41 +47,40 @@ class GameService:
             raise GameNotFoundError(f"Игра с id {game_id} не найдена")
 
         update_data = game_data.model_dump(exclude_unset=True)
-
         for field, value in update_data.items():
             setattr(game, field, value)
 
-        return await self.game_repo.update(game)
+        updated_game = await self.game_repo.update(game)
+
+        await self.session.commit()
+        await self.session.refresh(updated_game)
+
+        return updated_game
 
     async def delete_game(self, game_id: int) -> None:
         """Удаление игры"""
         game = await self.get_game(game_id)
         await self.game_repo.delete(game)
 
-    async def get_price_history(self, game_id: int) -> list[PriceHistoryModel]:
-        """Получение истории цен для игры (связка двух репозиториев)"""
-        # сначала проверяем, что игра вообще существует
-        await self.get_game(game_id)
+        await self.session.commit()
 
-        # если ок, идем во второй репозиторий
+    async def get_price_history(self, game_id: int) -> list[PriceHistoryModel]:
+        """Получение истории цен для игры"""
+        await self.get_game(game_id)
         return await self.price_history_repo.get_by_game_id(game_id)
 
     async def update_game_price(self, game_id: int, new_price: Decimal) -> GameModel:
         """Обновление цены игры и запись в историю (для Celery-воркера)"""
         game = await self.get_game(game_id)
 
-        # оптимизация: если цена не изменилась, не делаем лишних запросов в бд
         if game.current_price == new_price:
             return game
 
-        # обновляем текущую цену в таблице games
         game.current_price = new_price
         await self.game_repo.update(game)
-
-        # записываем изменение в историю цен
         await self.price_history_repo.add_record(game_id, new_price)
 
-        # здесь будет логика проверки вишлистов:
-        # если new_price <= target_price у кого-то из юзеров -> отправляем уведомление
+        await self.session.commit()
+        await self.session.refresh(game)
 
         return game

@@ -1,12 +1,11 @@
 from decimal import Decimal
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from app.core.exceptions import (
     AccessDeniedError,
     GameNotFoundError,
-    WishlistAlreadyExistsError,
 )
 from app.database.models import GameModel, WishlistModel
 from app.schemas.wishlist import WishlistCreate, WishlistUpdate
@@ -15,7 +14,10 @@ from app.services.wishlist_service import WishlistService
 
 @pytest.fixture
 def mock_session():
-    return AsyncMock()
+    session = AsyncMock()
+    session.commit = AsyncMock()
+    session.refresh = AsyncMock()
+    return session
 
 
 @pytest.fixture
@@ -27,61 +29,88 @@ def wishlist_service(mock_session):
 
 
 @pytest.mark.asyncio
-async def test_add_to_wishlist_success(wishlist_service):
-    wishlist_service.game_repo.get_by_id.return_value = GameModel(
-        id=1,
-        title="Test Game",
-        external_id="steam_123",
-        current_price=Decimal("19.99"),
-        image_url="http://example.com/image.jpg",
-    )
+async def test_add_to_wishlist_success(wishlist_service, mock_session):
+    user_id = 11
+    data = WishlistCreate(game_id=1, target_price=Decimal("1500.00"))
+
+    wishlist_service.game_repo.get_by_id.return_value = MagicMock(spec=GameModel)
     wishlist_service.wishlist_repo.get_by_user_and_game.return_value = None
-    wishlist_service.wishlist_repo.create.return_value = WishlistModel(
-        id=1, user_id=1, game_id=1, target_price=Decimal("15.00")
+
+    created_wishlist = WishlistModel(
+        id=1, user_id=user_id, game_id=1, target_price=Decimal("1500.00")
     )
+    wishlist_service.wishlist_repo.create.return_value = created_wishlist
 
-    data = WishlistCreate(game_id=1, target_price=Decimal("15.00"))
-    result = await wishlist_service.add_to_wishlist(user_id=1, data=data)
+    result = await wishlist_service.add_to_wishlist(user_id, data)
 
-    assert result.user_id == 1
+    wishlist_service.wishlist_repo.create.assert_called_once()
+    mock_session.commit.assert_called_once()
+    mock_session.refresh.assert_called_once_with(created_wishlist)
+    assert result.user_id == user_id
 
 
 @pytest.mark.asyncio
-async def test_add_to_wishlist_game_not_found(wishlist_service):
+async def test_add_to_wishlist_game_not_found(wishlist_service, mock_session):
+    user_id = 11
+    data = WishlistCreate(game_id=999, target_price=Decimal("1500.00"))
     wishlist_service.game_repo.get_by_id.return_value = None
 
-    data = WishlistCreate(game_id=999, target_price=Decimal("15.00"))
-
     with pytest.raises(GameNotFoundError):
-        await wishlist_service.add_to_wishlist(user_id=1, data=data)
+        await wishlist_service.add_to_wishlist(user_id, data)
+
+    mock_session.commit.assert_not_called()
 
 
 @pytest.mark.asyncio
-async def test_add_to_wishlist_already_exists(wishlist_service):
-    wishlist_service.game_repo.get_by_id.return_value = GameModel(
-        id=1,
-        title="Test Game",
-        external_id="steam_123",
-        current_price=Decimal("19.99"),
-        image_url="http://example.com/image.jpg",
-    )
-    wishlist_service.wishlist_repo.get_by_user_and_game.return_value = WishlistModel(
-        id=1, user_id=1, game_id=1, target_price=Decimal("15.00")
-    )
+async def test_update_wishlist_success(wishlist_service, mock_session):
+    wishlist_id = 1
+    user_id = 11
+    data = WishlistUpdate(target_price=Decimal("2000.00"))
 
-    data = WishlistCreate(game_id=1, target_price=Decimal("15.00"))
+    mock_wishlist = MagicMock(spec=WishlistModel)
+    mock_wishlist.user_id = user_id
+    mock_wishlist.target_price = Decimal("1500.00")
 
-    with pytest.raises(WishlistAlreadyExistsError):
-        await wishlist_service.add_to_wishlist(user_id=1, data=data)
+    wishlist_service.wishlist_repo.get_by_id.return_value = mock_wishlist
+    wishlist_service.wishlist_repo.update.return_value = mock_wishlist
+
+    result = await wishlist_service.update_wishlist(wishlist_id, user_id, data)
+
+    wishlist_service.wishlist_repo.update.assert_called_once_with(mock_wishlist)
+    mock_session.commit.assert_called_once()
+    mock_session.refresh.assert_called_once_with(mock_wishlist)
+    assert result.target_price == Decimal("2000.00")
 
 
 @pytest.mark.asyncio
-async def test_update_wishlist_access_denied(wishlist_service):
-    wishlist_service.wishlist_repo.get_by_id.return_value = WishlistModel(
-        id=1, user_id=2, game_id=1, target_price=Decimal("15.00")
-    )
+async def test_update_wishlist_access_denied(wishlist_service, mock_session):
+    wishlist_id = 1
+    user_id = 11
+    data = WishlistUpdate(target_price=Decimal("2000.00"))
 
-    data = WishlistUpdate(target_price=Decimal("10.00"))
+    mock_wishlist = MagicMock(spec=WishlistModel)
+    mock_wishlist.user_id = 99  # Чужой вишлист
+
+    wishlist_service.wishlist_repo.get_by_id.return_value = mock_wishlist
 
     with pytest.raises(AccessDeniedError):
-        await wishlist_service.update_wishlist(wishlist_id=1, user_id=1, data=data)
+        await wishlist_service.update_wishlist(wishlist_id, user_id, data)
+
+    mock_session.commit.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_remove_from_wishlist_success(wishlist_service, mock_session):
+    wishlist_id = 1
+    user_id = 11
+
+    mock_wishlist = MagicMock(spec=WishlistModel)
+    mock_wishlist.user_id = user_id
+
+    wishlist_service.wishlist_repo.get_by_id.return_value = mock_wishlist
+    wishlist_service.wishlist_repo.delete = AsyncMock()
+
+    await wishlist_service.remove_from_wishlist(wishlist_id, user_id)
+
+    wishlist_service.wishlist_repo.delete.assert_called_once_with(mock_wishlist)
+    mock_session.commit.assert_called_once()

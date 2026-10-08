@@ -23,6 +23,6 @@ class GameResponse(BaseModel):
     external_id: str
     current_price: Decimal
     image_url: str | None
-    created_at: datetime
+    created_at: datetime | None = None
 
     model_config = ConfigDict(from_attributes=True)
